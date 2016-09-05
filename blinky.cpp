@@ -218,7 +218,7 @@ int main(void)
     {
         pMem = (uint32_t *) malloc(memorySize);
         printf("*** Checking available heap RAM, from 0x%08lx to 0x%08lx.\n", (uint32_t) pMem, (uint32_t) pMem + memorySize);
-        printf("    (the last variable pushed onto the stack is at 0x%08lx, MSP is at 0x%08lx, errno is %d).\n", (uint32_t) &pRamResult, __get_MSP(), errno);
+        printf("    (the last variable pushed onto the stack is at 0x%08lx, MSP is at 0x%08lx, last errno was %d).\n", (uint32_t) &pRamResult, __get_MSP(), errno);
         if (pMem != NULL)
         {
             pRamResult = checkRam(pMem, memorySize);
@@ -241,7 +241,7 @@ int main(void)
 
     wait(2);
 
-    gFlipper.attach_us(NULL, 0);
+    gFlipper.detach();
 
     printf("*** Echoing received characters forever.\n");
 

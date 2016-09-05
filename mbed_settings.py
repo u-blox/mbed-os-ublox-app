@@ -51,7 +51,7 @@ GOANNA_PATH = "c:/Program Files (x86)/RedLizards/Goanna Central 3.2.3/bin"
 CPPCHECK_CMD = ["cppcheck", "--enable=all"]
 CPPCHECK_MSG_FORMAT = ["--template=[{severity}] {file}@{line}: {id}:{message}"]
 
-BUILD_OPTIONS = ["debug-info"]
+# BUILD_OPTIONS = ["debug-info"]
 
 # mbed.org username
 MBED_ORG_USER = ""

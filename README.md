@@ -14,16 +14,16 @@ The repo structure is quite confusing; it goes like this:
 * So, you MUST use the [mbed command line tools](https://github.com/ARMmbed/mbed-cli) to sort everything out for you.  For instance, to create a new mbed-os application for yourself, let's call it `my-app`, create the `my-app` directory, `cd` to it and then (assuming you have the mbed CLI tools installed) enter `mbed new .`.  This will go and get all of the latest mbed-os release and put it into the correct sub-directories.  All you need to do then is add your application file(s) to the top-level directory and you have a code tree which should compile and run 'on' mbed-os.
 * However, since we're in mid port and our stuff hasn't yet made it into the main mbed-os release you need to get our version of mbed-os instead.  So, rather than doing `mbed new .` you need to do:
 
-`mbed add https://github.com/u-blox/mbed-os-ublox-sara-nbiot mbed-os`
+`mbed add https://github.com/u-blox/mbed-os-sara-nbiot mbed-os`
 
-You will end up with what looks like an `mbed-os` directory but which contains the code from https://github.com/u-blox/mbed-os-ublox-sara-nbiot instead.
+You will end up with what looks like an `mbed-os` directory but which contains the code from https://github.com/u-blox/mbed-os-sara-nbiot instead.
 
 # Building This Code
 Once you have cloned this repo, `cd` to the repo directory and enter the following.
 
 `mbed update`
 
-This will fetch the latest code from https://github.com/u-blox/mbed-os-ublox-sara-nbiot, recursing as necessary.
+This will fetch the latest code from https://github.com/u-blox/mbed-os-sara-nbiot, recursing as necessary.
 
 You need to set the target and the toolchain that you want to use.  The target and toolchain we'd like to use this application on is `SARA_NBIOT_EVK` and the toolchain is `GCC_ARM`.  Of course, in future we will support the u-blox targets on other toolchains (e.g. ARM, microVision, IAR) and, equally, if there's another target you happen to be using, exactly the same application code can be used on that target.  To get a list of supported targets and their toolchains enter `mbed compile -S`.
 

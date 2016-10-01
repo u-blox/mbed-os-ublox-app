@@ -199,7 +199,7 @@ static void flip()
 
 int main(void)
 {
-    Serial usb (USBTX, USBRX);
+    RawSerial usb (USBTX, USBRX);
     size_t memorySize;
     uint32_t * pMem;
     uint32_t * pRamResult;
@@ -253,6 +253,4 @@ int main(void)
             usb.putc(c);
         }
     }
-    
-    return -1;
 }

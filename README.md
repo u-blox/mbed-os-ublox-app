@@ -3,7 +3,7 @@
 This repo contains an application that pulls together all the bits of the u-blox integration of the new mbed 5 release and builds something runnable.
 
 # Prerequisites
-To fetch and build the code in this repository you need first to install the [mbed CLI tools](https://github.com/ARMmbed/mbed-cli#installation) and their prerequisites.
+To fetch and build the code in this repository you need first to install the [mbed CLI tools](https://github.com/ARMmbed/mbed-cli#installation) and their prerequisites.  This will include a compiler (you can use GCC_ARM, ARM or IAR) and you will need to use `mbed config` to tell the mbed CLI tools where that compiler is. 
 
 # Repo Structure
 The repo structure is quite confusing; it goes like this:
@@ -51,4 +51,3 @@ You will find the output files in the sub-directory `.build\SARA_NBIOT_EVK\GCC_A
 
   ...which will get debug output into the `.elf` file and switch optimisation off so that you can use a debugger.
 * Eclipse project files are included but you can also build from the command-line as above.
-* There is currently an issue where attempts to `malloc()` more than a total of 10324 bytes will succeed (up to 11572 bytes) by overlapping into the stack area.  While it is correct to overlap into the stack area, it shouldn't go that far.  This issue has been raised with ARM in [https://github.com/ARMmbed/mbed-os/issues/464](https://github.com/ARMmbed/mbed-os/issues/464).

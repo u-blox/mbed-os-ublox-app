@@ -16,7 +16,6 @@
  */
 
 #include "mbed.h"
-#include "errno.h"
 
 // ----------------------------------------------------------------
 // GENERAL COMPILE-TIME CONSTANTS
@@ -24,7 +23,7 @@
 
 // Things to do with the processing system
 #define SYSTEM_CONTROL_BLOCK_START_ADDRESS ((uint32_t *) 0xe000ed00)
-#define SYSTEM_RAM_SIZE_BYTES 16384
+#define SYSTEM_RAM_SIZE_BYTES 20480
 
 // ----------------------------------------------------------------
 // TYPES
@@ -43,13 +42,17 @@ static DigitalOut gGpio(LED1);
 // Flipper to test uS delays
 static Ticker gFlipper;
 
+// Serial port for talking to a PC
+static RawSerial gUsb (USBTX, USBRX);
+
 // ----------------------------------------------------------------
 // FUNCTION PROTOTYPES
 // ----------------------------------------------------------------
 
 static void checkCpu(void);
-static size_t checkHeapSize(void);
-static uint32_t * checkRam(uint32_t * pMem, size_t memorySize);
+static void * mallocLargestSize(size_t *pSizeBytes);
+static size_t checkHeapSize(size_t sizeBytes);
+static void checkRam(uint32_t * pMem, size_t memorySizeBytes);
 static void flip(void);
 
 // ----------------------------------------------------------------
@@ -93,45 +96,108 @@ static void checkCpu()
     printf("A static variable is at 0x%08lx.\n", (uint32_t) &gFlipper);
 }
 
-// Check how much RAM can be malloc'ed
-static size_t checkHeapSize(void)
+// Malloc the largest block possible.  When called pSizeBytes should
+// point to the target size required and on return pSizeBytes will be filled
+// in with the actual size allocated.
+// A pointer to the mallocated block is returned.
+static void * mallocLargestSize(size_t *pSizeBytes)
 {
-    int32_t memorySize = SYSTEM_RAM_SIZE_BYTES;
+    int32_t memorySizeBytes;
     void * pMem = NULL;
 
-    while ((pMem == NULL) && (memorySize > 0))
+    if (pSizeBytes != NULL)
     {
-        pMem = malloc(memorySize);
-        if (pMem == NULL)
+        memorySizeBytes = (int32_t) *pSizeBytes;
+
+        while ((pMem == NULL) && (memorySizeBytes > 0))
         {
-            memorySize -= sizeof(uint32_t);
+            pMem = malloc(memorySizeBytes);
+            if (pMem == NULL)
+            {
+                memorySizeBytes -= sizeof(uint32_t);
+            }
         }
+
+        if (memorySizeBytes < 0)
+        {
+            memorySizeBytes = 0;
+        }
+
+        *pSizeBytes = memorySizeBytes;
     }
 
-    if (pMem != NULL)
-    {
-        free(pMem);
-    }
-
-    if (memorySize < 0)
-    {
-        memorySize = 0;
-    }
-
-    return (size_t) memorySize;
+    return pMem;
 }
 
-// Check that the given area of RAM is good.
-static uint32_t * checkRam(uint32_t *pMem, size_t memorySize)
+// Check how much heap can be malloc'ed, up to sizeBytes in size.
+// Returns the number of bytes successfully malloc'ed.
+static size_t checkHeapSize(size_t sizeBytes)
+{
+    size_t totalHeapSizeBytes = 0;
+    void *pFirstMalloc = NULL;
+    size_t firstMallocSizeBytes = sizeBytes;
+    void **ppLaterMalloc = NULL;
+    size_t laterMallocSizeBytes = sizeBytes;
+
+    // Try to allocate a block
+    pFirstMalloc = mallocLargestSize(&firstMallocSizeBytes);
+
+    if (pFirstMalloc != NULL)
+    {
+        // Check that this bit of RAM is good
+        checkRam((uint32_t *) pFirstMalloc, firstMallocSizeBytes);
+
+        // Now use the block to store pointers to memory and
+        // try to allocate more blocks.  This is necessary
+        // since malloc() may be limited in what it can grab
+        // in one go.
+        totalHeapSizeBytes += firstMallocSizeBytes;
+
+        ppLaterMalloc = (void **) pFirstMalloc;
+        laterMallocSizeBytes = SYSTEM_RAM_SIZE_BYTES;
+
+        while ((ppLaterMalloc < (void **) pFirstMalloc + (firstMallocSizeBytes / sizeof (void **))) && (*ppLaterMalloc != NULL) && (laterMallocSizeBytes > 0))
+        {
+            *ppLaterMalloc = mallocLargestSize(&laterMallocSizeBytes);
+
+            if (*ppLaterMalloc != NULL)
+            {
+                // Check that this bit of RAM is good
+                checkRam((uint32_t *) *ppLaterMalloc, laterMallocSizeBytes);
+
+                totalHeapSizeBytes += laterMallocSizeBytes;
+                laterMallocSizeBytes = SYSTEM_RAM_SIZE_BYTES;
+                ppLaterMalloc++;
+            }
+        }
+
+        // Free up the mallocated memory
+        while (ppLaterMalloc >= pFirstMalloc)
+        {
+            free(*ppLaterMalloc);
+            ppLaterMalloc--;
+        }
+
+        free(pFirstMalloc);
+    }
+
+    return totalHeapSizeBytes;
+}
+
+// Check that the given area of RAM is good.  Prints an error
+// message and stops dead if there is a problem.
+static void checkRam(uint32_t *pMem, size_t memorySizeBytes)
 {
     uint32_t * pLocation = NULL;
     uint32_t value;
 
     if (pMem != NULL)
     {
+        printf("*** Checking RAM, from 0x%08lx to 0x%08lx.\n", (uint32_t) pMem, (uint32_t) pMem + memorySizeBytes / sizeof (*pMem));
+
         // Write a walking 1 pattern
         value = 1;
-        for (pLocation = pMem; pLocation < pMem + memorySize / sizeof (*pLocation); pLocation++)
+        for (pLocation = pMem; pLocation < pMem + memorySizeBytes / sizeof (*pLocation); pLocation++)
         {
             *pLocation = value;
             value <<= 1;
@@ -143,7 +209,7 @@ static uint32_t * checkRam(uint32_t *pMem, size_t memorySize)
 
         // Read the walking 1 pattern
         value = 1;
-        for (pLocation = pMem; pLocation < pMem + memorySize / sizeof (*pLocation); pLocation++)
+        for (pLocation = pMem; pLocation < pMem + memorySizeBytes / sizeof (*pLocation); pLocation++)
         {
             value <<= 1;
             if (value == 0)
@@ -152,11 +218,11 @@ static uint32_t * checkRam(uint32_t *pMem, size_t memorySize)
             }
         }
 
-        if (pLocation >= pMem + memorySize / sizeof (uint32_t))
+        if (pLocation >= pMem + memorySizeBytes / sizeof (uint32_t))
         {
             // Write an inverted walking 1 pattern
             value = 1;
-            for (pLocation = pMem; pLocation < pMem + memorySize / sizeof (*pLocation); pLocation++)
+            for (pLocation = pMem; pLocation < pMem + memorySizeBytes / sizeof (*pLocation); pLocation++)
             {
                 *pLocation = ~value;
                 value <<= 1;
@@ -168,7 +234,7 @@ static uint32_t * checkRam(uint32_t *pMem, size_t memorySize)
 
             // Read the inverted walking 1 pattern
             value = 1;
-            for (pLocation = pMem; (pLocation < pMem + memorySize / sizeof (*pLocation)) && (*pLocation == ~value); pLocation++)
+            for (pLocation = pMem; (pLocation < pMem + memorySizeBytes / sizeof (*pLocation)) && (*pLocation == ~value); pLocation++)
             {
                 value <<= 1;
                 if (value == 0)
@@ -178,13 +244,11 @@ static uint32_t * checkRam(uint32_t *pMem, size_t memorySize)
             }
         }
 
-        if (pLocation >= pMem + memorySize / sizeof (*pLocation))
+        if (pLocation < pMem + memorySizeBytes / sizeof (*pLocation))
         {
-            pLocation = NULL;
+            printf("!!! RAM check failure at location 0x%08lx (contents 0x%08lx).\n", (uint32_t) pLocation, *pLocation);
         }
     }
-
-    return pLocation;
 }
 
 // Flip
@@ -199,40 +263,18 @@ static void flip()
 
 int main(void)
 {
-    RawSerial usb (USBTX, USBRX);
-    size_t memorySize;
-    uint32_t * pMem;
-    uint32_t * pRamResult;
+    size_t memorySizeBytes;
 
-    //usb.baud (115200);
-    usb.baud (9600);
+    //gUsb.baud (115200);
+    gUsb.baud (9600);
 
     checkCpu();
 
     printf("*** Checking heap size available.\n");
-    memorySize = checkHeapSize();
+    memorySizeBytes = checkHeapSize(SYSTEM_RAM_SIZE_BYTES);
 
-    printf("    %d byte(s) available.\n", memorySize);
-
-    if (memorySize >= sizeof (uint32_t))
-    {
-        pMem = (uint32_t *) malloc(memorySize);
-        printf("*** Checking available heap RAM, from 0x%08lx to 0x%08lx.\n", (uint32_t) pMem, (uint32_t) pMem + memorySize);
-        printf("    (the last variable pushed onto the stack is at 0x%08lx, MSP is at 0x%08lx, last errno was %d).\n", (uint32_t) &pRamResult, __get_MSP(), errno);
-        if (pMem != NULL)
-        {
-            pRamResult = checkRam(pMem, memorySize);
-            if (pRamResult != NULL)
-            {
-                printf("!!! RAM check failure at location 0x%08lx (contents 0x%08lx).\n", (uint32_t) pRamResult, *pRamResult);
-                while(1) {};
-            }
-        }
-        else
-        {
-            printf("!!! Unable to malloc() %d byte(s).\n", memorySize);
-        }
-    }
+    printf("*** Total heap available was %d bytes.\n", memorySizeBytes);
+    printf("    The last variable pushed onto the stack was at 0x%08lx, MSP is at 0x%08lx.\n", (uint32_t) &memorySizeBytes, __get_MSP());
 
     printf("*** Running us_ticker at 100 usecond intervals for 2 seconds...\n");
 
@@ -247,10 +289,10 @@ int main(void)
 
     while (1)
     {
-        if (usb.readable() && usb.writeable())
+        if (gUsb.readable() && gUsb.writeable())
         {
-            char c = usb.getc();
-            usb.putc(c);
+            char c = gUsb.getc();
+            gUsb.putc(c);
         }
     }
 }

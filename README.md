@@ -19,21 +19,19 @@ The repo structure is quite confusing; it goes like this:
 ...to obtain `mbed-os`.
 
 # Building This Code
-You need to set the target and the toolchain that you want to use.  The target and toolchain we'd like to use this application on is `SARA_NBIOT_EVK` and the toolchain is `GCC_ARM`.  Of course, in future we will support the u-blox targets on other toolchains (e.g. ARM, microVision, IAR) and, equally, if there's another target you happen to be using, exactly the same application code can be used on that target.  To get a list of supported targets and their toolchains enter `mbed compile -S`.
+You need to set the target and the toolchain that you want to use.  The target and toolchain we'll use with this application is `SARA_NBIOT_EVK` and we will chose the toolchain `ARM`, though note that `GCC_ARM` and `IAR` toolchains are also supported.  To get a list of supported targets and their toolchains enter `mbed compile -S`.
 
-You can set the target and toolchain for this application once by entering the following two commands (while in the top-level directory of the repo):
+You can set the target and toolchain for this application once by entering the following two commands (while in the top-level directory of the cloned repo):
 
 `mbed target SARA_NBIOT_EVK`
 
-`mbed toolchain GCC_ARM`
-
-This assumes, of course, that you are using GCC.  As a note, using the ARM tools instead is much more efficient in terms of both RAM and ROM.
+`mbed toolchain ARM`
 
 Once this is done, build the code with:
 
 `mbed compile`
 
-You will find the output files in the sub-directory `.build\SARA_NBIOT_EVK\GCC_ARM\`.
+You will find the output files in the sub-directory `.build\SARA_NBIOT_EVK\ARM\`.
 
 # Other Things
 

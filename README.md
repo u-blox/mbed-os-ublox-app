@@ -12,11 +12,14 @@ The repo structure is quite confusing; it goes like this:
 * Look for the vital little file `mbed-os.lib`.  It really is vital.
 * Because github can't do references to repos from within repos (like good 'ole SVN did), ARM have invented these `.lib` files.  The name is very confusing as all the file contains is a link to another repo (`lnk` would have been a better file extension to choose).  When you use the [mbed command line tools](https://github.com/ARMmbed/mbed-cli) or the mbed on-line IDE it understands these `.lib` files.  So the effect of `mbed-os.lib` is to tell the mbed tools to go get the github URL inside the `mbed-os.lib` file and put it in the sub-directory `mbed-os`.  In the on-line IDE this is called a library, hence the confusing name.
 * So, you MUST use the [mbed command line tools](https://github.com/ARMmbed/mbed-cli) to sort everything out for you.  For instance, to create a new mbed-os application for yourself, let's call it `my-app`, create the `my-app` directory, `cd` to it and then (assuming you have the mbed CLI tools installed) enter `mbed new .`.  This will go and get all of the latest mbed-os release and put it into the correct sub-directories.  All you need to do then is add your application file(s) to the top-level directory and you have a code tree which should compile and run 'on' `mbed-os`.
-* Our Sara-N target has been merged into `mbed-os` but not yet back ported to an `mbed-os` release, so you can't currently just do `mbed new .`, instead you need to do:
 
-`mbed add https://github.com/ARMmbed/mbed-os`
+# Downloading This Code
+* Clone this repo.
+* Change directory to this repo and run:
 
-...to obtain `mbed-os`.
+`mbed update`
+
+...to get the very latest mbed.
 
 # Building This Code
 You need to set the target and the toolchain that you want to use.  The target and toolchain we'll use with this application is `SARA_NBIOT_EVK` and we will chose the toolchain `ARM`, though note that `GCC_ARM` and `IAR` toolchains are also supported.  To get a list of supported targets and their toolchains enter `mbed compile -S`.
@@ -35,13 +38,12 @@ You will find the output files in the sub-directory `.build\SARA_NBIOT_EVK\ARM\`
 
 # Other Things
 
-* There is a file `mbed-settings.py` in the top-level repo directory.  This is where you make local changes to how you want the code built.  The only non-default setting in this particular file is to change:
+* By default mbed builds with maximum optimisation and no debug information, i.e. a release build.  To build in such a way that source level single stepping is available, do a clean build with the following switch added to your compilation command line:
 
-  `BUILD_OPTIONS = []`
+`--profile mbed-os/tools/profiles/debug.json`
 
-  to
+...so for instance:
 
-  `BUILD_OPTIONS = ["debug-info"]`
+`mbed compile -c --profile mbed-os/tools/profiles/debug.json`
 
-  ...which will get debug output into the `.elf` file and switch optimisation off so that you can use a debugger.
 * Eclipse project files are included but you can also build from the command-line as above.
